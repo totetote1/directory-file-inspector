@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="941" viewBox="0 0 1672 941">
+  <rect width="1672" height="941" fill="#f7f8f5"/>
+  <rect x="120" y="96" width="1432" height="749" rx="36" fill="#ffffff" stroke="#d9dfd9" stroke-width="4"/>
+  <rect x="188" y="168" width="500" height="56" rx="12" fill="#0f766e"/>
+  <rect x="188" y="276" width="392" height="34" rx="8" fill="#d9dfd9"/>
+  <rect x="244" y="356" width="360" height="34" rx="8" fill="#e8ece8"/>
+  <rect x="300" y="436" width="430" height="34" rx="8" fill="#e8ece8"/>
+  <rect x="300" y="516" width="520" height="34" rx="8" fill="#ffe8cf"/>
+  <rect x="356" y="596" width="458" height="34" rx="8" fill="#ffd8d2"/>
+  <rect x="864" y="276" width="500" height="88" rx="18" fill="#eef7f5" stroke="#0f766e" stroke-width="3"/>
+  <rect x="864" y="408" width="500" height="88" rx="18" fill="#fff7e8" stroke="#9a5a00" stroke-width="3"/>
+  <rect x="864" y="540" width="500" height="88" rx="18" fill="#fff0ee" stroke="#b42318" stroke-width="3"/>
+  <text x="188" y="210" fill="#ffffff" font-family="Arial, sans-serif" font-size="36" font-weight="700">Directory File Inspector</text>
+  <text x="908" y="332" fill="#0f766e" font-family="Arial, sans-serif" font-size="34" font-weight="700">sort by size</text>
+  <text x="908" y="464" fill="#9a5a00" font-family="Arial, sans-serif" font-size="34" font-weight="700">group by type</text>
+  <text x="908" y="596" fill="#b42318" font-family="Arial, sans-serif" font-size="34" font-weight="700">find duplicates</text>
+</svg>
