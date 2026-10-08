@@ -104,6 +104,7 @@ async function walk(root, options) {
         if (!ignoredDirs.has(entry.name)) await visit(abs);
         continue;
       }
+      if (ignoredDirs.has(entry.name)) continue;
       if (!entry.isFile()) continue;
 
       const stat = await fs.promises.stat(abs);
@@ -262,13 +263,102 @@ function buildTree(items) {
   return root;
 }
 
+const REFERENCE_SOURCE_EXTS = new Set([".html", ".htm", ".css", ".js", ".mjs"]);
+const ENTRY_EXTS = new Set([".html", ".htm"]);
+
+function isExternalRef(value) {
+  return /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(value);
+}
+
+function cleanRef(value) {
+  return value
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .split("#")[0]
+    .split("?")[0]
+    .trim();
+}
+
+function resolveRef(root, sourceFile, rawValue) {
+  const value = cleanRef(rawValue);
+  if (!value || isExternalRef(value)) return null;
+
+  const baseDir = path.dirname(path.join(root, sourceFile.path));
+  const target = value.startsWith("/")
+    ? path.resolve(root, `.${value}`)
+    : path.resolve(baseDir, value);
+
+  if (!target.startsWith(root + path.sep) && target !== root) return null;
+  return normalizeRel(path.relative(root, target));
+}
+
+function extractRefs(content) {
+  const refs = [];
+  const attrPattern = /\b(?:src|href|poster|action|data|srcset)\s*=\s*(["'])(.*?)\1/gi;
+  const urlPattern = /url\(\s*(["']?)(.*?)\1\s*\)/gi;
+  const importPattern = /\bimport\s+(?:[^"'()]+?\s+from\s+)?(["'])(.*?)\1/gi;
+
+  for (const pattern of [attrPattern, urlPattern, importPattern]) {
+    let match;
+    while ((match = pattern.exec(content))) {
+      refs.push(match[2]);
+    }
+  }
+
+  return refs.flatMap((value) => value.split(",").map((part) => part.trim().split(/\s+/)[0]));
+}
+
+async function auditLinks(root, files) {
+  const byPath = new Map(files.map((file) => [file.path, file]));
+  const referencedBy = new Map(files.map((file) => [file.path, []]));
+  const missing = [];
+
+  for (const file of files) {
+    if (!REFERENCE_SOURCE_EXTS.has(file.ext)) continue;
+
+    const abs = path.join(root, file.path);
+    const content = await fs.promises.readFile(abs, "utf8");
+    for (const rawRef of extractRefs(content)) {
+      const rel = resolveRef(root, file, rawRef);
+      if (!rel) continue;
+
+      if (byPath.has(rel)) {
+        referencedBy.get(rel).push(file.path);
+      } else {
+        missing.push({ from: file.path, target: rel, raw: rawRef });
+      }
+    }
+  }
+
+  const filesWithLinks = files.map((file) => {
+    const sources = referencedBy.get(file.path) || [];
+    const isEntry = ENTRY_EXTS.has(file.ext) && !file.dir;
+    const linked = isEntry || sources.length > 0;
+    return {
+      ...file,
+      linked,
+      linkStatus: linked ? (isEntry && sources.length === 0 ? "entry" : "linked") : "unlinked",
+      referencedBy: sources,
+    };
+  });
+
+  return {
+    linkedFiles: filesWithLinks.filter((file) => file.linked).length,
+    unlinkedFiles: filesWithLinks.filter((file) => !file.linked).length,
+    missingRefs: missing,
+    files: filesWithLinks,
+  };
+}
+
 async function scanDirectory(rootPath, options = {}) {
   const root = path.resolve(rootPath);
   const stat = await fs.promises.stat(root);
   if (!stat.isDirectory()) throw new Error("指定パスはディレクトリではありません");
 
   const ignoredDirs = options.ignoredDirs || [".git", "node_modules", ".DS_Store", "__MACOSX"];
-  const files = await walk(root, { ignoredDirs });
+  const walkedFiles = await walk(root, { ignoredDirs });
+  const linkAudit = await auditLinks(root, walkedFiles);
+  const files = linkAudit.files;
   const summary = summarize(files);
   const duplicates = options.checkDuplicates
     ? await findDuplicates(root, files, options)
@@ -280,6 +370,11 @@ async function scanDirectory(rootPath, options = {}) {
     summary,
     files,
     tree: buildTree(files),
+    linkAudit: {
+      linkedFiles: linkAudit.linkedFiles,
+      unlinkedFiles: linkAudit.unlinkedFiles,
+      missingRefs: linkAudit.missingRefs,
+    },
     duplicates,
   };
 }

@@ -11,11 +11,16 @@ const elements = {
   totalSize: document.querySelector("#totalSize"),
   typeCount: document.querySelector("#typeCount"),
   duplicateCount: document.querySelector("#duplicateCount"),
+  linkedCount: document.querySelector("#linkedCount"),
+  unlinkedCount: document.querySelector("#unlinkedCount"),
   fileRows: document.querySelector("#fileRows"),
   typeSummary: document.querySelector("#typeSummary"),
   extSummary: document.querySelector("#extSummary"),
+  unlinkedList: document.querySelector("#unlinkedList"),
+  missingList: document.querySelector("#missingList"),
   duplicateList: document.querySelector("#duplicateList"),
   duplicateStatus: document.querySelector("#duplicateStatus"),
+  linkStatus: document.querySelector("#linkStatus"),
   statusText: document.querySelector("#statusText"),
 };
 
@@ -75,7 +80,7 @@ function renderFiles() {
   elements.statusText.textContent = scanResult ? `${files.length}件表示` : "未スキャン";
 
   if (!files.length) {
-    elements.fileRows.innerHTML = '<tr><td colspan="5" class="empty-cell">条件に合うファイルはありません。</td></tr>';
+    elements.fileRows.innerHTML = '<tr><td colspan="6" class="empty-cell">条件に合うファイルはありません。</td></tr>';
     return;
   }
 
@@ -84,6 +89,7 @@ function renderFiles() {
     .map((file) => `
       <tr>
         <td><strong>${escapeHtml(file.name)}</strong></td>
+        <td>${renderLinkBadge(file)}</td>
         <td><span class="badge type-badge">${escapeHtml(file.typeLabel)}</span></td>
         <td class="num">${formatBytes(file.size)}</td>
         <td>${new Date(file.modified).toLocaleString("ja-JP")}</td>
@@ -91,6 +97,12 @@ function renderFiles() {
       </tr>
     `)
     .join("");
+}
+
+function renderLinkBadge(file) {
+  if (file.linkStatus === "entry") return '<span class="badge linked">入口</span>';
+  if (file.linked) return '<span class="badge linked">参照あり</span>';
+  return '<span class="badge unlinked">未リンク</span>';
 }
 
 function renderSummaryList(target, rows, keyLabel = "key") {
@@ -124,6 +136,53 @@ function renderTypeOptions() {
   if ([...elements.typeFilter.options].some((option) => option.value === current)) {
     elements.typeFilter.value = current;
   }
+}
+
+function renderLinkAudit() {
+  const audit = scanResult.linkAudit;
+  elements.linkedCount.textContent = audit.linkedFiles;
+  elements.unlinkedCount.textContent = audit.unlinkedFiles;
+  elements.linkStatus.textContent = `未リンク ${audit.unlinkedFiles}件`;
+
+  const unlinked = scanResult.files.filter((file) => !file.linked);
+  if (!unlinked.length) {
+    elements.unlinkedList.classList.add("empty");
+    elements.unlinkedList.textContent = "未リンクのファイルは見つかっていません。";
+  } else {
+    elements.unlinkedList.classList.remove("empty");
+    elements.unlinkedList.innerHTML = unlinked
+      .slice(0, 100)
+      .map((file) => `
+        <div class="rank-item">
+          <div>
+            <strong>${escapeHtml(file.name)}</strong>
+            <span><code>${escapeHtml(file.path)}</code></span>
+          </div>
+          <b>${formatBytes(file.size)}</b>
+        </div>
+      `)
+      .join("");
+  }
+
+  if (!audit.missingRefs.length) {
+    elements.missingList.classList.add("empty");
+    elements.missingList.textContent = "見つからない参照はありません。";
+    return;
+  }
+
+  elements.missingList.classList.remove("empty");
+  elements.missingList.innerHTML = audit.missingRefs
+    .slice(0, 100)
+    .map((item) => `
+      <div class="missing-item">
+        <code>${escapeHtml(item.from)}</code>
+        <div>
+          <strong>${escapeHtml(item.raw)}</strong>
+          <span><code>${escapeHtml(item.target)}</code></span>
+        </div>
+      </div>
+    `)
+    .join("");
 }
 
 function renderDuplicates() {
@@ -170,6 +229,7 @@ function renderAll() {
   elements.exportLink.classList.remove("disabled");
   renderTypeOptions();
   renderFiles();
+  renderLinkAudit();
   renderSummaryList(elements.typeSummary, summary.byType);
   renderSummaryList(elements.extSummary, summary.byExt);
   renderDuplicates();

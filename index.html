@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ディレクトリファイル調査</title>
-    <meta name="description" content="指定したローカルディレクトリのファイルをサイズ・名前・種類・重複で調査するツール" />
+    <title>未リンクファイル調査</title>
+    <meta name="description" content="指定したローカルディレクトリの未リンクファイルと重複を調査するツール" />
     <link rel="stylesheet" href="styles.css" />
     <script defer src="app.js"></script>
   </head>
@@ -12,8 +12,8 @@
     <main class="app">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Local File Inspector</p>
-          <h1>ディレクトリファイル調査</h1>
+          <p class="eyebrow">Unlinked File Auditor</p>
+          <h1>未リンクファイル調査</h1>
         </div>
         <a href="../" class="ghost-link">戻る</a>
       </header>
@@ -33,7 +33,7 @@
 
       <section class="notice">
         <strong>ローカル調査用:</strong>
-        指定ディレクトリ内のファイルを集計し、サイズ・名前・ファイルタイプで並び替えできます。重複チェックをONにすると、同一サイズのファイルだけSHA-256で内容一致を確認します。
+        HTML/CSS/JS 内の参照を読み取り、参照されていないファイルを「未リンク」として表示します。重複チェックをONにすると、同一サイズのファイルだけSHA-256で内容一致を確認します。
       </section>
 
       <section class="metrics" aria-label="概要">
@@ -52,6 +52,14 @@
         <article>
           <span>Duplicates</span>
           <strong id="duplicateCount">0</strong>
+        </article>
+        <article>
+          <span>Linked</span>
+          <strong id="linkedCount">0</strong>
+        </article>
+        <article>
+          <span>Unlinked</span>
+          <strong id="unlinkedCount">0</strong>
         </article>
       </section>
 
@@ -95,6 +103,7 @@
               <thead>
                 <tr>
                   <th>名前</th>
+                  <th>リンク状態</th>
                   <th>タイプ</th>
                   <th>サイズ</th>
                   <th>更新日時</th>
@@ -124,6 +133,27 @@
             </div>
           </div>
           <div id="extSummary" class="rank-list empty">まだありません。</div>
+        </article>
+
+        <article class="panel wide">
+          <div class="panel-head">
+            <div>
+              <p class="panel-label">Link Audit</p>
+              <h2>未リンクファイル</h2>
+            </div>
+            <span id="linkStatus" class="status">未スキャン</span>
+          </div>
+          <div id="unlinkedList" class="rank-list empty">まだありません。</div>
+        </article>
+
+        <article class="panel wide">
+          <div class="panel-head">
+            <div>
+              <p class="panel-label">Missing References</p>
+              <h2>見つからない参照</h2>
+            </div>
+          </div>
+          <div id="missingList" class="missing-list empty">まだありません。</div>
         </article>
 
         <article class="panel wide">
